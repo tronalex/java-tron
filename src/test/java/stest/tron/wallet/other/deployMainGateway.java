@@ -27,43 +27,36 @@ import stest.tron.wallet.common.client.utils.PublicMethed;
 @Slf4j
 public class deployMainGateway {
 
+  private static final long now = System.currentTimeMillis();
+  private static final long TotalSupply = 1000000000000000L;
+  final String[] AssertAccount = {
+      "13ecfac7f8ca3fce74abda0452a38a1b3383d9c4470044b7a9e8567604db33f9",
+      "5f6194a1b855552a6ff81e99c441f0a43c5eb223dc6fae46d136cffb8b974978",
+      "d2614c199183c7f88562c3f0a9036a038149a3e3e76260954e125ec78064dd31",
+      "2c379393417ced659d9f0b93fc1c9d7ca8baaa079d8555c4b00618f96fe307ef",
+      "c44cbe6e2212d6961daee8ef0c9dab9340028cd8dbd03efc6d1f382fcbd774f9",
+      "d3242e7dec6fe5c94f114ac3aaf024a5648e98fa1f0fbd982e4c569849922dbd"
+  };
   private final String oracleKey =
       "324a2052e491e99026442d81df4d2777292840c1b3949e20696c49096c6bacb7";
   private final byte[] oracleAddress = PublicMethed.getFinalAddress(oracleKey);
-  private Long maxFeeLimit = Configuration.getByPath("testng.conf")
-      .getLong("defaultParameter.maxFeeLimit");
-  private final String foundationKey001 = Configuration.getByPath("testng.conf").
-      getString("foundationAccount.key1");
+  private final String foundationKey001 = Configuration.getByPath("testng.conf")
+      .getString("foundationAccount.key1");
   private final byte[] foundationAddress001 = PublicMethed.getFinalAddress(foundationKey001);
-  private final String foundationKey002 = Configuration.getByPath("testng.conf").
-      getString("foundationAccount.key2");
+  private final String foundationKey002 = Configuration.getByPath("testng.conf")
+      .getString("foundationAccount.key2");
   private final byte[] foundationAddress002 = PublicMethed.getFinalAddress(foundationKey002);
   private final String foundationKey003 = Configuration.getByPath("testng.conf")
       .getString("foundationAccount.key3");
   private final byte[] foundationAddress003 = PublicMethed.getFinalAddress(foundationKey003);
-
-
-  private static final long now = System.currentTimeMillis();
-  private static final long TotalSupply = 1000000000000000L;
   String description = Configuration.getByPath("testng.conf")
       .getString("defaultParameter.assetDescription");
   String url = Configuration.getByPath("testng.conf")
       .getString("defaultParameter.assetUrl");
-
+  private Long maxFeeLimit = Configuration.getByPath("testng.conf")
+      .getLong("defaultParameter.maxFeeLimit");
   private ManagedChannel channelFull = null;
   private WalletGrpc.WalletBlockingStub blockingStubFull = null;
-
-  final String[] AssertAccount = {
-    "13ecfac7f8ca3fce74abda0452a38a1b3383d9c4470044b7a9e8567604db33f9",
-    "5f6194a1b855552a6ff81e99c441f0a43c5eb223dc6fae46d136cffb8b974978",
-    "d2614c199183c7f88562c3f0a9036a038149a3e3e76260954e125ec78064dd31",
-    "2c379393417ced659d9f0b93fc1c9d7ca8baaa079d8555c4b00618f96fe307ef",
-    "c44cbe6e2212d6961daee8ef0c9dab9340028cd8dbd03efc6d1f382fcbd774f9",
-    "d3242e7dec6fe5c94f114ac3aaf024a5648e98fa1f0fbd982e4c569849922dbd"
-  };
-
-
-
   private WalletSolidityGrpc.WalletSolidityBlockingStub blockingStubSolidity = null;
 
   private String fullnode = Configuration.getByPath("testng.conf")
@@ -81,7 +74,7 @@ public class deployMainGateway {
 
   @BeforeClass(enabled = true)
   public void beforeClass() {
-//    PublicMethed.printAddress(testKeyFordeposit);
+    //PublicMethed.printAddress(testKeyFordeposit);
     channelFull = ManagedChannelBuilder.forTarget(fullnode)
         .usePlaintext(true)
         .build();
@@ -103,8 +96,8 @@ public class deployMainGateway {
     String parame = "\"" + Base58.encode58Check(oracleAddress) + "\"";
     String mainChainGatewayAddress = "3QJmnh";
     try {
-      code = PublicMethed.fileRead("/home/ABI_ByteCode/maingateway/MainChainGateway.bin",false);
-      abi = PublicMethed.fileRead("/home/ABI_ByteCode/maingateway/MainChainGateway.abi",false);
+      code = PublicMethed.fileRead("/home/ABI_ByteCode/maingateway/MainChainGateway.bin", false);
+      abi = PublicMethed.fileRead("/home/ABI_ByteCode/maingateway/MainChainGateway.abi", false);
     } catch (Exception e) {
       Assert.fail("Read ABI Failed");
       return;
@@ -123,20 +116,28 @@ public class deployMainGateway {
       byte[] mainChainGateway = infoById.get().getContractAddress().toByteArray();
       mainChainGatewayAddress = WalletClient.encode58Check(mainChainGateway);
 
-      if((!mainChainGatewayAddress.equals("3QJmnh"))&& !mainChainGatewayAddress.isEmpty()){
+      if ((!mainChainGatewayAddress.equals("3QJmnh")) && !mainChainGatewayAddress.isEmpty()) {
         String triggerTxid1 = PublicMethed
             .triggerContract(WalletClient.decodeFromBase58Check(mainChainGatewayAddress),
-                "addOracle(address)",parame,false,0L, maxFeeLimit,
+                "addOracle(address)", parame, false, 0L, maxFeeLimit,
                 foundationAddress003, foundationKey003, blockingStubFull);
         PublicMethed.waitProduceNextBlock(blockingStubFull);
         Optional<TransactionInfo> infoById1 = PublicMethed
             .getTransactionInfoById(triggerTxid1, blockingStubFull);
+
+        parame = "\"THph9K2M2nLvkianrMGswRhz5hjSA9fuH7\"";
+        String triggerTxid2 = PublicMethed
+            .triggerContract(WalletClient.decodeFromBase58Check(mainChainGatewayAddress),
+                "addOracle(address)", parame, false, 0L, maxFeeLimit,
+                foundationAddress003, foundationKey003, blockingStubFull);
+        PublicMethed.waitProduceNextBlock(blockingStubFull);
+        Optional<TransactionInfo> infoById2 = PublicMethed
+            .getTransactionInfoById(triggerTxid2, blockingStubFull);
         break;
       }
     }
 
-
-    String outputPath = "./src/test/resources/mainChainGatewayAddress" ;
+    String outputPath = "./src/test/resources/mainChainGatewayAddress";
     try {
       File mainChainFile = new File(outputPath);
       Boolean cun = mainChainFile.createNewFile();
@@ -146,14 +147,14 @@ public class deployMainGateway {
 
       out.close();
       writer.close();
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
     }
 
   }
 
   @Test(enabled = true, description = "create Token Foundation")
-  public void createTokenFoundation(){
+  public void createTokenFoundation() {
     logger.info("foundationAccount 001 : ");
     PublicMethed.printAddress(foundationKey001);
     logger.info("foundationAccount 002 : ");
@@ -162,41 +163,42 @@ public class deployMainGateway {
     long start = System.currentTimeMillis() + 2000;
     long end = System.currentTimeMillis() + 1000000000;
     Assert.assertTrue(PublicMethed.createAssetIssue(
-        foundationAddress001,"testAssetIssue_001",TotalSupply, 1,1,
-        start,end,1,description,url,maxFeeLimit,1000L,
-        1L,1L,foundationKey001,blockingStubFull));
+        foundationAddress001, "testAssetIssue_001", TotalSupply, 1, 1,
+        start, end, 1, description, url, maxFeeLimit, 1000L,
+        1L, 1L, foundationKey001, blockingStubFull));
 
     start = System.currentTimeMillis() + 2000;
     end = System.currentTimeMillis() + 1000000000;
     Assert.assertTrue(PublicMethed.createAssetIssue(
-        foundationAddress002,"testAssetIssue_002",TotalSupply, 1,1,
-        start,end,1,description,url,maxFeeLimit,1000L,
-        1L,1L,foundationKey002,blockingStubFull));
+        foundationAddress002, "testAssetIssue_002", TotalSupply, 1, 1,
+        start, end, 1, description, url, maxFeeLimit, 1000L,
+        1L, 1L, foundationKey002, blockingStubFull));
 
-    for(int keycount=0;keycount<AssertAccount.length;keycount++){
+    for (int keycount = 0; keycount < AssertAccount.length; keycount++) {
 
       String AssertKey = AssertAccount[keycount];
       byte[] AssertAddress = PublicMethed.getFinalAddress(AssertKey);
-      Assert.assertTrue(PublicMethed.sendcoin(AssertAddress,10000000000000L,
-          foundationAddress001,foundationKey001,blockingStubFull));
+      Assert.assertTrue(PublicMethed.sendcoin(AssertAddress, 10000000000000L,
+          foundationAddress001, foundationKey001, blockingStubFull));
       PublicMethed.waitProduceNextBlock(blockingStubFull);
 
       String AssertName = "testAssetIssue_00" + keycount;
       start = System.currentTimeMillis() + 2000;
       end = System.currentTimeMillis() + 1000000000;
       Assert.assertTrue(PublicMethed.createAssetIssue(
-          AssertAddress,AssertName,TotalSupply, 1,1, start,end,1,
-          description,url,maxFeeLimit,1000L, 1L,1L,
-          AssertKey,blockingStubFull));
+          AssertAddress, AssertName, TotalSupply, 1, 1, start, end, 1,
+          description, url, maxFeeLimit, 1000L, 1L, 1L,
+          AssertKey, blockingStubFull));
       try {
         Thread.sleep(1000);
-      }catch (Exception e){
+      } catch (Exception e) {
         e.printStackTrace();
       }
 
     }
 
   }
+
   /**
    * constructor
    */
