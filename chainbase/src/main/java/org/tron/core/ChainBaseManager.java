@@ -2,14 +2,18 @@ package org.tron.core;
 
 import static org.tron.core.config.Parameter.ChainConstant.BLOCK_PRODUCED_INTERVAL;
 
+import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.tron.common.utils.Pair;
 import org.tron.common.utils.Sha256Hash;
 import org.tron.common.zksnark.MerkleContainer;
 import org.tron.core.capsule.BlockCapsule;
@@ -21,12 +25,14 @@ import org.tron.core.db.BlockStore;
 import org.tron.core.db.CommonStore;
 import org.tron.core.db.DelegationService;
 import org.tron.core.db.KhaosDatabase;
+import org.tron.core.db.KhaosDatabase.KhaosBlock;
 import org.tron.core.db.RecentBlockStore;
 import org.tron.core.db.TransactionStore;
 import org.tron.core.db2.core.ITronChainBase;
 import org.tron.core.exception.BadItemException;
 import org.tron.core.exception.HeaderNotFound;
 import org.tron.core.exception.ItemNotFoundException;
+import org.tron.core.exception.NonCommonBlockException;
 import org.tron.core.store.AccountIdIndexStore;
 import org.tron.core.store.AccountIndexStore;
 import org.tron.core.store.AccountStore;
@@ -273,8 +279,6 @@ public class ChainBaseManager {
     }
   }
 
-
-
   /**
    * Get a BlockCapsule by id.
    */
@@ -324,6 +328,32 @@ public class ChainBaseManager {
   public BlockCapsule getBlockByNum(final long num) throws
       ItemNotFoundException, BadItemException {
     return getBlockById(getBlockIdByNum(num));
+  }
+
+  /**
+   * Get the fork branch.
+   */
+  public LinkedList<BlockId> getBlockChainHashesOnFork(final BlockId forkBlockHash)
+      throws NonCommonBlockException {
+    final Pair<LinkedList<KhaosBlock>, LinkedList<KhaosBlock>> branch =
+        this.khaosDb.getBranch(
+            getDynamicPropertiesStore().getLatestBlockHeaderHash(), forkBlockHash);
+
+    LinkedList<KhaosBlock> blockCapsules = branch.getValue();
+
+    if (blockCapsules.isEmpty()) {
+      logger.info("empty branch {}", forkBlockHash);
+      return Lists.newLinkedList();
+    }
+
+    LinkedList<BlockId> result = blockCapsules.stream()
+        .map(KhaosBlock::getBlk)
+        .map(BlockCapsule::getBlockId)
+        .collect(Collectors.toCollection(LinkedList::new));
+
+    result.add(blockCapsules.peekLast().getBlk().getParentBlockId());
+
+    return result;
   }
 
 }

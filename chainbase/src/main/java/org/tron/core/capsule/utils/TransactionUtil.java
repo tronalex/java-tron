@@ -136,4 +136,26 @@ public class TransactionUtil {
 
     return new TransactionInfoCapsule(builder.build());
   }
+
+  public static boolean isMultiSignTransaction(Transaction transaction) {
+    Contract contract = transaction.getRawData().getContract(0);
+    switch (contract.getType()) {
+      case AccountPermissionUpdateContract: {
+        return true;
+      }
+      default:
+    }
+    return false;
+  }
+
+  public static boolean isShieldedTransaction(Transaction transaction) {
+    Contract contract = transaction.getRawData().getContract(0);
+    switch (contract.getType()) {
+      case ShieldedTransferContract: {
+        return true;
+      }
+      default:
+    }
+    return false;
+  }
 }

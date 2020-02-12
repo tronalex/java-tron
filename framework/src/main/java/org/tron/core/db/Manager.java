@@ -33,7 +33,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import javax.annotation.PostConstruct;
 import lombok.Getter;
@@ -69,7 +68,6 @@ import org.tron.core.Constant;
 import org.tron.core.actuator.ActuatorCreator;
 import org.tron.core.capsule.AccountCapsule;
 import org.tron.core.capsule.BlockCapsule;
-import org.tron.core.capsule.BlockCapsule.BlockId;
 import org.tron.core.capsule.BytesCapsule;
 import org.tron.core.capsule.ExchangeCapsule;
 import org.tron.core.capsule.TransactionCapsule;
@@ -134,7 +132,6 @@ import org.tron.core.store.WitnessScheduleStore;
 import org.tron.core.store.WitnessStore;
 import org.tron.core.utils.TransactionRegister;
 import org.tron.protos.Protocol.AccountType;
-import org.tron.protos.Protocol.Transaction;
 import org.tron.protos.Protocol.Transaction.Contract;
 import org.tron.protos.Protocol.TransactionInfo;
 
@@ -700,7 +697,7 @@ public class Manager {
       TooBigTransactionException, TransactionExpirationException,
       ReceiptCheckErrException, VMIllegalException, TooBigTransactionResultException {
 
-    if (isShieldedTransaction(trx.getInstance()) && !Args.getInstance()
+    if (TransactionUtil.isShieldedTransaction(trx.getInstance()) && !Args.getInstance()
         .isFullNodeAllowShieldedTransactionArgs()) {
       return true;
     }
@@ -714,7 +711,7 @@ public class Manager {
       }
 
       synchronized (this) {
-        if (isShieldedTransaction(trx.getInstance())
+        if (TransactionUtil.isShieldedTransaction(trx.getInstance())
             && shieldedTransInPendingCounts.get() >= shieldedTransInPendingMaxCounts) {
           return false;
         }
@@ -727,7 +724,7 @@ public class Manager {
           pendingTransactions.add(trx);
           tmpSession.merge();
         }
-        if (isShieldedTransaction(trx.getInstance())) {
+        if (TransactionUtil.isShieldedTransaction(trx.getInstance())) {
           shieldedTransInPendingCounts.incrementAndGet();
         }
       }
@@ -956,8 +953,9 @@ public class Manager {
         consensus.receiveBlock(block);
       }
 
-      if (block.getTransactions().stream().filter(tran -> isShieldedTransaction(tran.getInstance()))
-          .count() > SHIELDED_TRANS_IN_BLOCK_COUNTS) {
+      if (block.getTransactions().stream().filter(
+          tran -> TransactionUtil.isShieldedTransaction(tran.getInstance())).count() >
+          SHIELDED_TRANS_IN_BLOCK_COUNTS) {
         throw new BadBlockException(
             "shielded transaction count > " + SHIELDED_TRANS_IN_BLOCK_COUNTS);
       }
@@ -1079,32 +1077,6 @@ public class Manager {
   }
 
   /**
-   * Get the fork branch.
-   */
-  public LinkedList<BlockId> getBlockChainHashesOnFork(final BlockId forkBlockHash)
-      throws NonCommonBlockException {
-    final Pair<LinkedList<KhaosBlock>, LinkedList<KhaosBlock>> branch =
-        this.khaosDb.getBranch(
-            getDynamicPropertiesStore().getLatestBlockHeaderHash(), forkBlockHash);
-
-    LinkedList<KhaosBlock> blockCapsules = branch.getValue();
-
-    if (blockCapsules.isEmpty()) {
-      logger.info("empty branch {}", forkBlockHash);
-      return Lists.newLinkedList();
-    }
-
-    LinkedList<BlockId> result = blockCapsules.stream()
-        .map(KhaosBlock::getBlk)
-        .map(BlockCapsule::getBlockId)
-        .collect(Collectors.toCollection(LinkedList::new));
-
-    result.add(blockCapsules.peekLast().getBlk().getParentBlockId());
-
-    return result;
-  }
-
-  /**
    * Process transaction.
    */
   public TransactionInfo processTransaction(final TransactionCapsule trxCap, BlockCapsule blockCap)
@@ -1175,7 +1147,7 @@ public class Manager {
     // if event subscribe is enabled, post contract triggers to queue
     postContractTrigger(trace, false);
     Contract contract = trxCap.getInstance().getRawData().getContract(0);
-    if (isMultiSignTransaction(trxCap.getInstance())) {
+    if (TransactionUtil.isMultiSignTransaction(trxCap.getInstance())) {
       ownerAddressSet.add(ByteArray.toHexString(TransactionCapsule.getOwner(contract)));
     }
 
@@ -1235,7 +1207,7 @@ public class Manager {
         continue;
       }
       //shielded transaction
-      if (isShieldedTransaction(trx.getInstance())
+      if (TransactionUtil.isShieldedTransaction(trx.getInstance())
           && shieldedTransCounts.incrementAndGet() > SHIELDED_TRANS_IN_BLOCK_COUNTS) {
         continue;
       }
@@ -1246,7 +1218,7 @@ public class Manager {
       if (accountSet.contains(ownerAddress)) {
         continue;
       } else {
-        if (isMultiSignTransaction(trx.getInstance())) {
+        if (TransactionUtil.isMultiSignTransaction(trx.getInstance())) {
           accountSet.add(ownerAddress);
         }
       }
@@ -1292,28 +1264,6 @@ public class Manager {
     if (ownerAddressSet.contains(ownerAddress)) {
       result.add(ownerAddress);
     }
-  }
-
-  private boolean isMultiSignTransaction(Transaction transaction) {
-    Contract contract = transaction.getRawData().getContract(0);
-    switch (contract.getType()) {
-      case AccountPermissionUpdateContract: {
-        return true;
-      }
-      default:
-    }
-    return false;
-  }
-
-  private boolean isShieldedTransaction(Transaction transaction) {
-    Contract contract = transaction.getRawData().getContract(0);
-    switch (contract.getType()) {
-      case ShieldedTransferContract: {
-        return true;
-      }
-      default:
-    }
-    return false;
   }
 
   public TransactionStore getTransactionStore() {

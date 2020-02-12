@@ -148,7 +148,7 @@ public class TronNetDelegate {
 
   public List<BlockId> getBlockChainHashesOnFork(BlockId forkBlockHash) throws P2pException {
     try {
-      return dbManager.getBlockChainHashesOnFork(forkBlockHash);
+      return chainBaseManager.getBlockChainHashesOnFork(forkBlockHash);
     } catch (NonCommonBlockException e) {
       throw new P2pException(TypeEnum.HARD_FORKED, forkBlockHash.getString());
     }
@@ -254,7 +254,8 @@ public class TronNetDelegate {
     try {
       return witnessScheduleStore.getActiveWitnesses().contains(block.getWitnessAddress())
           && block
-          .validateSignature(dbManager.getDynamicPropertiesStore(), dbManager.getAccountStore());
+          .validateSignature(chainBaseManager.getDynamicPropertiesStore(),
+              chainBaseManager.getAccountStore());
     } catch (ValidateSignatureException e) {
       throw new P2pException(TypeEnum.BAD_BLOCK, e);
     }
